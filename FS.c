@@ -138,6 +138,44 @@ void delete_dir_tree(struct dir *root){
        q_destroy(q);
       printf("\n done \n");
 }
+
+void delete_dir(struct dir *d , char *dir_name){
+     if(d == NULL){
+         perror("can not perform delete in null directory !");
+         return;
+     }
+     // check if the directory name is valid
+     if(dir_name == NULL || strlen(dir_name) == 0){
+        perror("Invalid directory name !");
+        return;
+     }
+     //check for if the directory has no directories
+     if(d->child_index == -1){
+         perror("This directory has no directories !");
+         return;
+     }
+     // search for the directory name
+     int i;
+     for(i = 0; i <= d->child_index; ++i){
+        if(strcmp(dir_name , d->child[i]->dir_name) == 0){
+             //deallocing that dir branch tree;
+             delete_dir_tree(d->child[i]);
+             break;
+        }
+     }
+     //check if the directory not found
+     if(i > d->child_index){
+         perror("this directory does not exist !");
+         return;
+     }
+     //check if i is less than child_index the shift the contents of child[I+1] to child[i]
+     if(i < d->child_index){
+         for(int I = i; I < d->child_index; ++I){
+             d->child[I] = d->child[I+1];
+         }
+     }
+     d->child_index--;
+}
 void view_contents(struct FS *fs){
       if(fs == NULL){
            perror("file system not created");
@@ -175,7 +213,3 @@ void destroy_FS(struct FS *fs){
     printf("\ndone\n");
 
 }
-
-
-
-

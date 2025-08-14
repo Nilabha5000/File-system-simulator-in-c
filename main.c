@@ -1,14 +1,25 @@
 #include "FS.h"
 #include <unistd.h>
 #include <string.h>
-void options(char *dir_name){
-    printf("Current directory %s \n\n",dir_name);
+
+typedef struct path{
+    int count;
+    char *vector[100];
+}path;
+void options(path p){
+    printf("Current directory  ");
+    //displaying the path
+    for(int i = 0; i < p.count; ++i){
+        printf("/%s",p.vector[i]);
+    }
+    printf("\n\n");
     printf("1. View contents \n");
     printf("2. Create directory \n");
     printf("3. Create file \n");
     printf("4. Change directory \n");
     printf("5. Go back\n");
-    printf("6. Close\n");
+    printf("6. Delete directory \n");
+    printf("7. Close\n");
 }
 void clear_input_buffer() {
     int c;
@@ -19,11 +30,15 @@ int main(void) {
     int running = 0;
     int opt;
     char filename[20], dir_name[20];
+    
+    
     struct FS *fs = initFS("root");    
-
+    path p;
+    p.count = 1;
+    p.vector[0] = fs->root->dir_name;
     while (!running) {
         system("clear");
-        options(fs->current_dir->dir_name);
+        options(p);
 
         if (scanf("%d", &opt) != 1) {
             printf("Invalid input! Please enter a number.\n");
@@ -59,6 +74,8 @@ int main(void) {
                 fgets(dir_name, sizeof(dir_name), stdin);
                 dir_name[strcspn(dir_name, "\n")] = 0; // Remove newline
                 fs->current_dir = change_directory(fs, dir_name);
+                p.vector[p.count] = fs->current_dir->dir_name;
+                p.count++;
                 if (fs->current_dir == NULL) {
                     printf("Failed to change directory.\n");
                 }
@@ -66,12 +83,19 @@ int main(void) {
             case 5:
                 if (fs->current_dir != fs->root) {
                     fs->current_dir = go_back_to_prev(fs);
+                    p.count--;
                 } else {
                     printf("Cannot go back from root.\n");
                 }
                 break;
-
-            case 6:
+             case 6:
+                view_contents(fs);
+                printf("\nEnter the directory name to delete : ");
+                fgets(dir_name, sizeof(dir_name), stdin);
+                dir_name[strcspn(dir_name, "\n")] = 0; // Remove newline
+                delete_dir(fs->current_dir , dir_name);
+                break;
+            case 7:
                 running = 1;
                 break;
 

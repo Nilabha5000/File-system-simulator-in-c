@@ -31,6 +31,7 @@ struct dir *change_directory(struct FS*,char *);
 
 struct dir *go_back_to_prev(struct FS*);
 void delete_dir_tree(struct dir *);
+void delete_dir(struct dir *, char *);
 void view_contents(struct FS *);
 void destroy_FS(struct FS *);
 #endif
