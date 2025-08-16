@@ -71,7 +71,7 @@ struct dir *change_directory(struct FS *fs ,char * dir_name){
      // Check if the directory name is valid
      if(dir_name == NULL || strlen(dir_name) == 0) {
           perror("Invalid directory name");
-          return peek(&fs->s);
+          return NULL;
      }
         // Search for the directory in the current directory's children
          for (int i = 0; i <= fs->current_dir->child_index; i++)
@@ -84,7 +84,7 @@ struct dir *change_directory(struct FS *fs ,char * dir_name){
             }
          }
          perror("Directory not found");
-         return peek(&fs->s);
+         return NULL;
 }
 // Function that returns the previous directory
 struct dir *go_back_to_prev(struct FS *fs){
