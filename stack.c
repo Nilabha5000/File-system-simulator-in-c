@@ -1,7 +1,7 @@
 #include "stack.h"
 #include "FS.h"
 #include <errno.h>
-struct stack *init(){
+struct stack *init_stack(){
     struct stack *s = (struct stack*)malloc(sizeof(struct stack));
     s->top = NULL;
    return s;

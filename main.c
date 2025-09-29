@@ -1,4 +1,5 @@
 #include "FS.h"
+#include "map.h"
 #include <unistd.h>
 #include <string.h>
 // This is a command structure 
@@ -27,16 +28,6 @@ typedef struct mng_history{
 // The commands are indexed from 0 to 7
 // and correspond to the cases in the switch statement
 // in the main function
-// The commands are:
-// 0: ls - list contents of the current directory
-// 1: rmdir - remove a directory
-// 2: touch - create a file
-// 3: cd - change directory
-// 4: mkdir - make a directory
-// 5: back - go back to the previous directory
-// 6: exit - exit the shell
-// 7: clear - clear the screen
-const char*command_list[] = {"ls", "rmdir", "touch", "cd" , "mkdir" , "back" , "exit" , "clear", "history"};
 // This is a path structure that holds the current path
 // It is used to keep track of the current directory
 // and the directories that have been visited
@@ -46,6 +37,13 @@ typedef struct path{
     int count;
     char *vector[100];
 }path;
+
+struct essentail_items{
+    struct FS *fs;
+    path *p;
+    cmd *c;
+    mng_history *history;
+};
 // This function extracts the tokens from the command
 // and stores them in the cmd structure
 // It uses dynamic memory allocation to create a new token
@@ -56,12 +54,22 @@ typedef struct path{
 // and the argc variable is incremented for each token found
 // The last token is always NULL to indicate the end of the arguments
 void extract_tokens(cmd *c , char *command){
-      char *token = (char*)malloc(20);
+     int token_size = 20;
+      char *token = (char*)malloc(token_size);
+      char *temp = NULL;
       int i = 0;
-       int j = 0;
+       int j = 0; // for token index
        while(command[i] == ' ') i++;
       while(command[i] != '\0'){
           if(command[i] != ' '){
+             //check the size if it the cherecters exceeds the size limit
+            if(j >= token_size){
+                 token_size *= 2;
+                 temp = realloc(token , token_size);
+                 //checking for NULL
+                 if(temp != NULL) token = temp;
+                 temp = NULL;
+            }
             token[j] = command[i];
             j++;
           }
@@ -69,7 +77,8 @@ void extract_tokens(cmd *c , char *command){
              token[j] = '\0';
              c->argv[c->argc] = token;
              c->argc++;
-             token = (char*)malloc(20);
+             token_size = 20;
+             token = (char*)malloc(token_size);
              j = 0;
           }
          i++;
@@ -78,16 +87,7 @@ void extract_tokens(cmd *c , char *command){
      c->argv[c->argc] = token;
      c->argc++;
 }
-// This function returns the index of the command in the command_list array
-// It compares the command with each command in the list
-// and returns the index if a match is found 
-int get_command_index(char *command){
-     for(int i = 0; i < 9; ++i){    
-         if(strcmp(command, command_list[i]) == 0)
-                return i;
-     }
-    return -1;
-}
+
 // This function initializes the history manager
 // It creates a new mng_history structure
 // and sets the head and tail to NULL
@@ -133,6 +133,74 @@ void destroy_history(mng_history *h){
     }
     free(h);
 }
+
+void wrap_history(void * arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    print_history(ei->history);
+}
+
+void wrap_view_contents(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    view_contents(ei->fs);
+
+}
+
+
+void wrap_delete_dir(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    delete_dir(ei->fs->current_dir,ei->c->argv[1]);
+}
+
+void wrap_create_file(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+
+    create_file(ei->fs,ei->c->argv[1]);
+}
+
+void wrap_mkdir(void * arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+
+    if(ei->c->argc > 1)
+        make_directory_in_a_current_directory(ei->fs , ei->c->argv[1]);
+    else
+        printf("mkdir needs more the one argument\n");
+}
+
+void wrap_go_back(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    if(ei->fs->current_dir != ei->fs->root)
+        ei->fs->current_dir = go_back_to_prev(ei->fs);
+    if(ei->p->count > 1)
+        ei->p->count--;
+}
+
+void wrap_exit(void *arg){
+    int *is_running = (int*)arg;
+    *is_running = 1;
+}
+
+void wrap_clear(void *){
+    system("clear");
+}
+void wrap_pwd(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+     for(int i = 0; i < ei->p->count; ++i){
+        printf("/%s",ei->p->vector[i]);
+    }
+    printf("\n");
+}
+
+void wrap_cd(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    ei->fs->current_dir = change_directory(ei->fs , ei->c->argv[1]);
+    if(ei->fs->current_dir != NULL){
+        ei->p->vector[ei->p->count] = ei->fs->current_dir->dir_name;
+        ei->p->count++;
+    }
+    else{
+        ei->fs->current_dir = peek(&ei->fs->s);
+    }
+}
 int main(void) {
     int running = 0;
     int opt;
@@ -147,6 +215,23 @@ int main(void) {
     p.vector[0] = fs->root->dir_name;
     cmd c;
     mng_history *history = init_history();
+    nlist **map = init();
+
+    set(map,"ls",wrap_view_contents);
+    set(map,"mkdir", wrap_mkdir);
+    set(map,"clear",wrap_clear);
+    set(map,"exit",wrap_exit);
+    set(map,"touch",wrap_create_file);
+    set(map,"rmdir",wrap_delete_dir);
+    set(map,"back",wrap_go_back);
+    set(map,"pwd",wrap_pwd);
+    set(map,"cd",wrap_cd);
+    set(map,"history",wrap_history);
+    struct essentail_items ei;
+    ei.c = &c;
+    ei.fs = fs;
+    ei.history = history;
+    ei.p = &p;
     while (!running) {
       // This is the prompt that shows the current path
        printf("\033[1;32m"); // Set text color to green
@@ -161,49 +246,24 @@ int main(void) {
        command[strcspn(command, "\n")] = 0; // Remove newline
         add_history(history, command);
        extract_tokens(&c , command);
-       opt = get_command_index(c.argv[0]);
-        switch (opt) {
-            case 0:
-                view_contents(fs);
-                break;
-            case 1:
-               delete_dir(fs->current_dir,c.argv[1]);
-               break;
-            case 2:
-               create_file(fs,c.argv[1]);
-              break;
-            case 3:
-              fs->current_dir = change_directory(fs , c.argv[1]);
-              if(fs->current_dir != NULL){
-                 p.vector[p.count] = fs->current_dir->dir_name;
-                 p.count++;
-              }
+        func_t f = get_func(map, c.argv[0]);
+        if(f == NULL){
+             if(strlen(command) == 0 || strcmp(command , " ") == 0);
               else
-                fs->current_dir = peek(&fs->s);
-              break;
-            case 4:
-             make_directory_in_a_current_directory(fs , c.argv[1]);
-              break;
-             case 5:
-                if(fs->current_dir != fs->root)
-                    fs->current_dir = go_back_to_prev(fs);
-                if(p.count > 1)
-                       p.count--;
-              break;
-            case 6:
-               running = 1;
-               break;
-            case 7:
-               system("clear");
-               break;
-            case 8:
-                print_history(history);
-               break;
-            default:
-                if(strlen(command) == 0 || strcmp(command , " ") == 0);
-                else
-                 printf("%s: command not found\n", command);
+                printf("%s: command not found\n", command);
         }
+        else if(strcmp(c.argv[0],"exit") == 0){
+            f(&running);
+        }
+        else if(strcmp(c.argv[0], "clear") == 0){
+            f(NULL);
+        }
+        else if(f != NULL){
+            f(&ei);
+        }
+            
+                
+
          for(int i = 0; i < c.argc; ++i){
               free(c.argv[i]);
          }
@@ -213,5 +273,6 @@ int main(void) {
     // Free the file system resources
     destroy_history(history);
     destroy_FS(fs);
+    destroylist(map);
     return 0;
 }

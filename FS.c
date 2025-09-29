@@ -8,7 +8,7 @@ struct FS *initFS(char *root_name){
      struct FS *fs = (struct FS*)malloc(sizeof(struct FS));
      fs->root = make_directory(root_name);
      fs->current_dir = fs->root;
-     fs->s = init();
+     fs->s = init_stack();
      push(&fs->s , fs->current_dir);
      return fs;
 }

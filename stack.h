@@ -10,7 +10,7 @@ struct s_node{
 struct stack{
      struct s_node *top; 
 };
-struct stack *init();
+struct stack *init_stack();
 void push(struct stack ** , struct dir *);
 void pop(struct stack **);
 struct dir *peek(struct stack **);
