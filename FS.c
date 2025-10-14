@@ -29,7 +29,7 @@ struct dir *make_directory(char *dir_name){
     return d;
 }
 
-void create_file(struct FS *fs , char *filename){
+void create_file(struct FS *fs , const char *filename){
      if(fs == NULL){
            perror("file system not created");
            return;
@@ -57,6 +57,43 @@ void create_file(struct FS *fs , char *filename){
       strcpy(fs->current_dir->files[index], filename);
 }
 
+void remove_file(struct FS *fs , const char *filename){
+     if(fs == NULL){
+          perror("file system not created");
+           return;
+     }
+     // Check if the current directory is NULL
+      if(fs->current_dir == NULL)
+     {
+           perror("directory does not exist");
+           return;
+     }
+     
+     //search for a file
+     int rmIndex = -1;
+     for(int i = 0; i <= fs->current_dir->file_index; ++i){
+          if(strcmp(filename,fs->current_dir->files[i]) == 0){
+
+               rmIndex = i;
+               break;
+          }
+     }
+     
+     if(rmIndex == -1){
+          perror("file not found");
+     }
+     else if(rmIndex == fs->current_dir->file_index){
+          free(fs->current_dir->files[rmIndex]);
+          fs->current_dir->file_index--;
+     }
+     else{
+          free(fs->current_dir->files[rmIndex]);
+          for(int i = rmIndex; i < fs->current_dir->file_index; ++i){
+              fs->current_dir->files[i] = fs->current_dir->files[i+1];
+          }
+          fs->current_dir->file_index--;
+     }
+}
 struct dir *change_directory(struct FS *fs ,char * dir_name){
       if(fs == NULL){
            perror("file system not created");

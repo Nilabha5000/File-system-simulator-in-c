@@ -157,6 +157,11 @@ void wrap_create_file(void *arg){
     create_file(ei->fs,ei->c->argv[1]);
 }
 
+void wrap_rm(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+
+    remove_file(ei->fs, ei->c->argv[1]);
+}
 void wrap_mkdir(void * arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
 
@@ -182,6 +187,9 @@ void wrap_exit(void *arg){
 void wrap_clear(void *){
     system("clear");
 }
+void wrap_python(void *){
+    system("python3");
+}
 void wrap_pwd(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
      for(int i = 0; i < ei->p->count; ++i){
@@ -203,7 +211,6 @@ void wrap_cd(void *arg){
 }
 int main(void) {
     int running = 0;
-    int opt;
     // This is the command buffer that holds the command entered by the user
     // It is a fixed size array of characters
     // It is used to read the command from the standard input
@@ -222,11 +229,13 @@ int main(void) {
     set(map,"clear",wrap_clear);
     set(map,"exit",wrap_exit);
     set(map,"touch",wrap_create_file);
+    set(map,"rm",wrap_rm);
     set(map,"rmdir",wrap_delete_dir);
     set(map,"back",wrap_go_back);
     set(map,"pwd",wrap_pwd);
     set(map,"cd",wrap_cd);
     set(map,"history",wrap_history);
+    set(map,"python",wrap_python);
     struct essentail_items ei;
     ei.c = &c;
     ei.fs = fs;
@@ -255,7 +264,7 @@ int main(void) {
         else if(strcmp(c.argv[0],"exit") == 0){
             f(&running);
         }
-        else if(strcmp(c.argv[0], "clear") == 0){
+        else if(strcmp(c.argv[0], "clear") == 0 || strcmp(c.argv[0], "python") == 0){
             f(NULL);
         }
         else if(f != NULL){
