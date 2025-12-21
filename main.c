@@ -184,10 +184,28 @@ void wrap_delete_dir(void *arg){
 
 void wrap_create_file(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
-
+    if(ei->c->argc == 1){
+        perror("argument missing");
+        return;
+    }
     create_file(ei->fs,ei->c->argv[1]);
 }
-
+void warp_write_file(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    if(ei->c->argc != 3){
+        perror("argument missing");
+        return;
+    }
+    write_file(ei->fs,ei->c->argv[1], ei->c->argv[2]);
+}
+void warp_cat(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    if(ei->c->argc != 2){
+        perror("argument missing");
+        return;
+    }
+    show_file_content(ei->fs,ei->c->argv[1]);
+}
 void wrap_rm(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
 
@@ -267,6 +285,8 @@ int main(void) {
     set(map,"cd",wrap_cd);
     set(map,"history",wrap_history);
     set(map,"python",wrap_python);
+    set(map,"cat", warp_cat);
+    set(map,"write",warp_write_file);
     struct essentail_items ei;
     ei.c = &c;
     ei.fs = fs;
@@ -307,7 +327,7 @@ int main(void) {
          for(int i = 0; i < c.argc; ++i){
               free(c.argv[i]);
          }
-        memset(command , 0 , 67);
+        memset(command , 0 , 200);
     }
      
     // Free the file system resources

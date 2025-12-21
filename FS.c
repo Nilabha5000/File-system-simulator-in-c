@@ -46,15 +46,20 @@ void create_file(struct FS *fs , const char *filename){
            perror("Maximum file limit reached");
            return;
       }
-      // Allocate memory for the new file name and copy it
-      fs->current_dir->files[index] = (char*)malloc(strlen(filename)+1);
+      // Allocate memory for the new file.
+      struct file *newfile = (struct file*)malloc(sizeof(struct file));
       // Check if memory allocation was successful
-      if(fs->current_dir->files[index] == NULL) {
+      if(newfile == NULL) {
            perror("Memory allocation failed");
            return;
       }
+      
+      newfile->file_name = (char*)malloc(strlen(filename)+1);
       // Copy the file name into the directory's files array
-      strcpy(fs->current_dir->files[index], filename);
+      strcpy(newfile->file_name, filename);
+      //setting the content buffer with 0.
+      memset(newfile->content_buffer , 0 , 4007);
+      fs->current_dir->files[index] = newfile;
 }
 
 void remove_file(struct FS *fs , const char *filename){
@@ -69,10 +74,10 @@ void remove_file(struct FS *fs , const char *filename){
            return;
      }
      
-     //search for a file
+     //search for a filename
      int rmIndex = -1;
      for(int i = 0; i <= fs->current_dir->file_index; ++i){
-          if(strcmp(filename,fs->current_dir->files[i]) == 0){
+          if(strcmp(filename,fs->current_dir->files[i]->file_name) == 0){
 
                rmIndex = i;
                break;
@@ -82,17 +87,80 @@ void remove_file(struct FS *fs , const char *filename){
      if(rmIndex == -1){
           perror("file not found");
      }
+     //check if the file present in the last element.
      else if(rmIndex == fs->current_dir->file_index){
+          free(fs->current_dir->files[rmIndex]->file_name);
           free(fs->current_dir->files[rmIndex]);
           fs->current_dir->file_index--;
      }
      else{
+          free(fs->current_dir->files[rmIndex]->file_name);
           free(fs->current_dir->files[rmIndex]);
           for(int i = rmIndex; i < fs->current_dir->file_index; ++i){
               fs->current_dir->files[i] = fs->current_dir->files[i+1];
           }
           fs->current_dir->file_index--;
      }
+}
+
+void write_file(struct FS *fs , const char *content , const char *filename){
+     if(fs == NULL){
+          perror("file system not created");
+          return;
+     }
+
+     // Check if the current directory is NULL.
+     if(fs->current_dir == NULL)
+     {
+           perror("directory does not exist");
+           return;
+     }
+
+     //search for file with a given filename in the current directory.
+     struct file *getfile = NULL;
+     for(int i = 0; i <= fs->current_dir->file_index; ++i){
+          if(strcmp(fs->current_dir->files[i]->file_name, filename) == 0){
+                getfile = fs->current_dir->files[i];
+                break;
+          }
+     }
+
+     if(getfile == NULL){
+          perror("file of this name does not exist in current directory");
+          return;
+     }
+
+     strncpy(getfile->content_buffer,content,4007);
+}
+
+void show_file_content(struct FS *fs , const char *filename){
+     if(fs == NULL){
+          perror("file system not created");
+          return;
+     }
+
+     // Check if the current directory is NULL.
+     if(fs->current_dir == NULL)
+     {
+           perror("directory does not exist");
+           return;
+     }
+     //search for file with a given filename in the current directory.
+     struct file *getfile = NULL;
+     for(int i = 0; i <= fs->current_dir->file_index; ++i){
+          if(strcmp(fs->current_dir->files[i]->file_name, filename) == 0){
+                getfile = fs->current_dir->files[i];
+                break;
+          }
+     }
+
+     if(getfile == NULL){
+          perror("file of this name does not exist in current directory");
+          return;
+     }
+
+     printf("%s\n",getfile->content_buffer);
+
 }
 struct dir *change_directory(struct FS *fs ,char * dir_name){
       if(fs == NULL){
@@ -167,6 +235,7 @@ void delete_dir_tree(struct dir *root){
             
             free(temp->dir_name);
             for(int i = 0; i <= temp->file_index; ++i){
+                  free(temp->files[i]->file_name);
                   free(temp->files[i]);
             }
             free(temp);
@@ -234,7 +303,7 @@ void view_contents(struct FS *fs){
      }
      //first showing all the files in current directory;
      for(int i = 0; i <= fs->current_dir->file_index; ++i){
-          printf("%s                   FILE\n\n",fs->current_dir->files[i]);
+          printf("%s                   FILE\n\n",fs->current_dir->files[i]->file_name);
      }
 }
 

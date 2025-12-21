@@ -8,8 +8,13 @@
 // Define maximum number of files and directories in a directory
 #define MAX_CONTAIN 100
 struct stack;
+
+struct file{
+    char *file_name;
+    char content_buffer[4007];
+};
 struct dir{
-     char *files[MAX_CONTAIN];
+     struct file *files[MAX_CONTAIN];
      int file_index;
      int child_index;
      char *dir_name;
@@ -27,6 +32,8 @@ struct FS *initFS(char *);
 struct dir *make_directory(char *);
 void make_directory_in_a_current_directory(struct FS* , char *);
 void create_file(struct FS * , const char *);
+void write_file(struct FS * , const char *, const char *);
+void show_file_content(struct FS *, const char *);
 void remove_file(struct FS * , const char *);
 struct dir *change_directory(struct FS*,char *);
 
