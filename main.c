@@ -2,6 +2,7 @@
 #include "map.h"
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 // This is a command structure 
 // that holds the command and its arguments
 typedef struct cmd{
@@ -56,34 +57,64 @@ struct essentail_items{
 void extract_tokens(cmd *c , char *command){
      int token_size = 20;
       char *token = (char*)malloc(token_size);
+      if(token == NULL) return;
       char *temp = NULL;
-      int i = 0;
-       int j = 0; // for token index
-       while(command[i] == ' ') i++;
-      while(command[i] != '\0'){
-          if(command[i] != ' '){
+      int l = 0, r = strlen(command)-1;
+      int j = 0; // for token index
+      bool is_quote_open = false;
+       //for left trimming.
+       while(command[l] == ' ') l++;
+       //for right trimming.
+       while(command[r] == ' ')  r--;
+      while(l < r+1){
+          if(command[l] == '\"'){
+              if(is_quote_open) is_quote_open = false;
+              else is_quote_open = true;
+          }
+          else if(is_quote_open || command[l] != ' '){
              //check the size if it the cherecters exceeds the size limit
             if(j >= token_size){
                  token_size *= 2;
                  temp = realloc(token , token_size);
                  //checking for NULL
-                 if(temp != NULL) token = temp;
+                 if(temp == NULL){
+                    free(token);
+                    return;
+                 }
+                 else token = temp;
                  temp = NULL;
             }
-            token[j] = command[i];
+            token[j] = command[l];
             j++;
           }
           else{
-             token[j] = '\0';
-             c->argv[c->argc] = token;
-             c->argc++;
-             token_size = 20;
-             token = (char*)malloc(token_size);
-             j = 0;
+            
+            token[j] = '\0';
+            //check if the token is empty then free the token.
+            if(strlen(token) == 0){
+                free(token);
+            }
+            else if(c->argc >= 50){
+                free(token);
+                return;
+            }
+            else{
+                c->argv[c->argc] = token;
+                c->argc++;
+            }
+            token_size = 20;
+            token = (char*)malloc(token_size);
+            if(token == NULL) return;
+            j = 0;
           }
-         i++;
+         l++;
       }
        token[j] = '\0';
+       if(strlen(token) == 0)
+       {
+            free(token);
+            return;
+       }
      c->argv[c->argc] = token;
      c->argc++;
 }
@@ -215,7 +246,7 @@ int main(void) {
     // It is a fixed size array of characters
     // It is used to read the command from the standard input
     // and to parse it into tokens
-    char command[67] = {0};
+    char command[200] = {0};
     struct FS *fs = initFS("root");    
     path p;
     p.count = 1;
@@ -249,7 +280,7 @@ int main(void) {
         printf("/%s",p.vector[i]);
        }
        printf("$ ");
-       fgets(command,67,stdin);
+       fgets(command,200,stdin);
        c.argc = 0;
        
        command[strcspn(command, "\n")] = 0; // Remove newline
