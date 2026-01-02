@@ -293,6 +293,7 @@ int main(void) {
     ei.history = history;
     ei.p = &p;
     while (!running) {
+        memset(command , 0 , 200);
       // This is the prompt that shows the current path
        printf("\033[1;32m"); // Set text color to green
        printf("~");
@@ -302,15 +303,15 @@ int main(void) {
        printf("$ ");
        fgets(command,200,stdin);
        c.argc = 0;
-       
        command[strcspn(command, "\n")] = 0; // Remove newline
+        if(strlen(command) == 0) continue;
         add_history(history, command);
        extract_tokens(&c , command);
         func_t f = get_func(map, c.argv[0]);
         if(f == NULL){
              if(strlen(command) == 0 || strcmp(command , " ") == 0);
               else
-                printf("%s: command not found\n", command);
+                printf("%s: command not found\n", c.argv[0]);
         }
         else if(strcmp(c.argv[0],"exit") == 0){
             f(&running);
@@ -327,7 +328,7 @@ int main(void) {
          for(int i = 0; i < c.argc; ++i){
               free(c.argv[i]);
          }
-        memset(command , 0 , 200);
+        
     }
      
     // Free the file system resources

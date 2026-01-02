@@ -41,9 +41,17 @@ void create_file(struct FS *fs , const char *filename){
            return;
       }
 
-      int index = ++fs->current_dir->file_index;
+      
+      for(int i = 0; i <= fs->current_dir->file_index; ++i){
+          if(strcmp(filename, fs->current_dir->files[i]->file_name) == 0){
+                  perror("file already exists");
+                  return;
+          }
+       }
+       int index = ++fs->current_dir->file_index;
       if(index >= MAX_CONTAIN) {
            perror("Maximum file limit reached");
+          --fs->current_dir->file_index;
            return;
       }
       // Allocate memory for the new file.
@@ -58,7 +66,7 @@ void create_file(struct FS *fs , const char *filename){
       // Copy the file name into the directory's files array
       strcpy(newfile->file_name, filename);
       //setting the content buffer with 0.
-      memset(newfile->content_buffer , 0 , 4007);
+      memset(newfile->content_buffer , 0 , MAX_CONTENT_LEN);
       fs->current_dir->files[index] = newfile;
 }
 
@@ -130,7 +138,7 @@ void write_file(struct FS *fs , const char *content , const char *filename){
           return;
      }
 
-     strncpy(getfile->content_buffer,content,4007);
+     strncpy(getfile->content_buffer,content,MAX_CONTENT_LEN);
 }
 
 void show_file_content(struct FS *fs , const char *filename){
@@ -158,7 +166,7 @@ void show_file_content(struct FS *fs , const char *filename){
           perror("file of this name does not exist in current directory");
           return;
      }
-
+     if(strlen(getfile->content_buffer) == 0) return;
      printf("%s\n",getfile->content_buffer);
 
 }
@@ -214,8 +222,19 @@ void make_directory_in_a_current_directory(struct FS *fs , char *dir_name){
                 perror("Invalid directory name");
                 return;
         }
+       //check for if current directory has a directory of dir_name.
+       for(int i = 0; i <= fs->current_dir->child_index; ++i){
+             if(strcmp(dir_name, fs->current_dir->child[i]->dir_name) == 0){
+                  perror("directory already exists");
+                  return;
+             }
+       }
       int index = ++fs->current_dir->child_index;
-      //if(index >= MAX_CONTAIN)
+      if(index >= MAX_CONTAIN){
+          perror("directory max limit reached");
+          --fs->current_dir->child_index;
+          return;
+      }
       fs->current_dir->child[index] = make_directory(dir_name);
 }
 void delete_dir_tree(struct dir *root){
