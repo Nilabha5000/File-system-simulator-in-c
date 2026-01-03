@@ -1,5 +1,6 @@
 #include "FS.h"
 #include "map.h"
+#include "hst_mng.h"
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
@@ -9,22 +10,6 @@ typedef struct cmd{
   int argc;
   char *argv[50];  
 }cmd;
-// This is a history node structure
-// It holds a command and a pointer to the next node
-// It is used to store the history of commands entered by the user
-// The history is managed as a linked list
-// The head of the list is the most recent command
-// and the tail is the oldest command
-// The history can be used to retrieve the last commands entered by the user
-// It can be used to implement the "history" command in the shell
-// The history can be printed to the screen
-typedef struct hst_node{
-    char *command;
-    struct hst_node *next;
-}hst_node;
-typedef struct mng_history{
-    hst_node *head , *tail;
-}mng_history;
 // This is a list of commands that the shell supports
 // The commands are indexed from 0 to 7
 // and correspond to the cases in the switch statement
@@ -119,51 +104,6 @@ void extract_tokens(cmd *c , char *command){
      c->argc++;
 }
 
-// This function initializes the history manager
-// It creates a new mng_history structure
-// and sets the head and tail to NULL
-// It returns a pointer to the new mng_history structure
-mng_history *init_history(){
-    mng_history *h = (mng_history*)malloc(sizeof(mng_history));
-    h->head = NULL;
-    h->tail = NULL;
-    return h;
-}
-// This function adds a command to the history
-// It creates a new hst_node structure  
-void add_history(mng_history *h , char *command){
-    hst_node *new_node = (hst_node*)malloc(sizeof(hst_node));
-    new_node->command = (char*)malloc(strlen(command) + 1);
-    strcpy(new_node->command, command);
-    new_node->next = NULL;
-    if(h->head == NULL){
-        h->head = new_node;
-        h->tail = new_node;
-    }
-    else{
-        h->tail->next = new_node;
-        h->tail = new_node;
-    }
-}
-void print_history(mng_history *h){
-    hst_node *current = h->head;
-    int index = 1;
-    while(current != NULL){
-        printf("%d. %s\n", index, current->command);
-        current = current->next;
-        index++;
-    }
-}
-void destroy_history(mng_history *h){
-    hst_node *current = h->head;
-    while(current != NULL){
-        hst_node *temp = current;
-        current = current->next;
-        free(temp->command);
-        free(temp);
-    }
-    free(h);
-}
 
 void wrap_history(void * arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
@@ -227,7 +167,15 @@ void wrap_go_back(void *arg){
     if(ei->p->count > 1)
         ei->p->count--;
 }
+void wrap_vim(void *arg){
+    struct essentail_items *ei = (struct essentail_items *)arg;
+    if(ei->c->argc > 2 || ei->c->argc < 2){
+        perror("wrong number of arguments");
+        return;
+    }
 
+    edit_file(ei->fs,ei->c->argv[1]);
+}
 void wrap_exit(void *arg){
     int *is_running = (int*)arg;
     *is_running = 1;
@@ -242,7 +190,7 @@ void wrap_python(void *){
 void wrap_pwd(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
      for(int i = 0; i < ei->p->count; ++i){
-        printf("/%s",ei->p->vector[i]);
+        printf("%s",ei->p->vector[i]);
     }
     printf("\n");
 }
@@ -287,6 +235,7 @@ int main(void) {
     set(map,"python",wrap_python);
     set(map,"cat", warp_cat);
     set(map,"write",warp_write_file);
+    set(map,"vim",wrap_vim);
     struct essentail_items ei;
     ei.c = &c;
     ei.fs = fs;
@@ -298,7 +247,7 @@ int main(void) {
        printf("\033[1;32m"); // Set text color to green
        printf("~");
        for(int i = 0; i < p.count; ++i){
-        printf("/%s",p.vector[i]);
+        printf("%s",p.vector[i]);
        }
        printf("$ ");
        fgets(command,200,stdin);

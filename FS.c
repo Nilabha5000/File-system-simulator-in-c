@@ -14,8 +14,16 @@ struct FS *initFS(char *root_name){
 }
 struct dir *make_directory(char *dir_name){
     struct dir *d = (struct dir*)malloc(sizeof(struct dir));
-    d->dir_name = (char*)malloc(strlen(dir_name)+1);
-    strcpy(d->dir_name , dir_name);
+    if(d == NULL) return NULL;
+    d->dir_name = (char*)malloc(strlen(dir_name)+2);
+    if(d->dir_name == NULL) return NULL;
+    int start_from = 0;
+    if(dir_name[0] != '/'){
+        d->dir_name[0] = '/';
+        d->dir_name[1] = '\0';
+        start_from = 1;
+    }
+    strcpy(d->dir_name+start_from , dir_name);
     // initailizing all child as NULL
     for(int i = 0; i < MAX_CONTAIN; ++i){
         d->child[i] = NULL;
@@ -140,7 +148,54 @@ void write_file(struct FS *fs , const char *content , const char *filename){
 
      strncpy(getfile->content_buffer,content,MAX_CONTENT_LEN);
 }
+void edit_file(struct FS *fs , const char *filename){
+     if(fs == NULL){
+          perror("file system not created");
+          return;
+     }
 
+     struct file *getfile = NULL;
+     for(int i = 0; i <= fs->current_dir->file_index; ++i){
+          if(strcmp(fs->current_dir->files[i]->file_name, filename) == 0){
+                getfile = fs->current_dir->files[i];
+                break;
+          }
+     }
+
+     if(getfile == NULL){
+          perror("file of this name does not exist in current directory");
+          return;
+     }
+
+     //open a temp file
+
+     FILE *temp_filew = fopen("temp.txt", "w");
+     if(temp_filew == NULL){
+          perror("error to edit this file.\n");
+          return;
+     }
+     fprintf(temp_filew,"%s", getfile->content_buffer);
+     fclose(temp_filew);
+     char cmd[100] = {0};
+     memset(cmd,0,100);
+     strcpy(cmd,"vim ");
+     strcat(cmd,"temp.txt");
+     
+     //opening the vim editor.
+     system(cmd);
+
+     //saving contents to a file.
+     char ch = '\0';
+     int index = 0;
+     FILE *temp_filer = fopen("temp.txt", "r");
+     while((ch = fgetc(temp_filer)) != EOF && index < MAX_CONTENT_LEN-1){
+          getfile->content_buffer[index++] = ch;
+     }
+     getfile->content_buffer[index] = '\0';
+     fclose(temp_filer);
+
+     remove("temp.txt");
+}
 void show_file_content(struct FS *fs , const char *filename){
      if(fs == NULL){
           perror("file system not created");
@@ -186,10 +241,13 @@ struct dir *change_directory(struct FS *fs ,char * dir_name){
           perror("Invalid directory name");
           return NULL;
      }
+     int start_from = 0;
+     if(dir_name[0] != '/')
+         start_from = 1;
         // Search for the directory in the current directory's children
          for (int i = 0; i <= fs->current_dir->child_index; i++)
          {
-            if (strcmp(fs->current_dir->child[i]->dir_name, dir_name) == 0)
+            if (strcmp(fs->current_dir->child[i]->dir_name+start_from, dir_name) == 0)
             {
                 // Directory found, push current directory onto stack
                 push(&fs->s, fs->current_dir->child[i]);
@@ -236,6 +294,12 @@ void make_directory_in_a_current_directory(struct FS *fs , char *dir_name){
           return;
       }
       fs->current_dir->child[index] = make_directory(dir_name);
+
+      if(fs->current_dir->child[index] == NULL){
+          perror("directory cration failed");
+          --fs->current_dir->child_index;
+          return;
+      }
 }
 void delete_dir_tree(struct dir *root){
        if(root == NULL){
@@ -279,10 +343,13 @@ void delete_dir(struct dir *d , char *dir_name){
          perror("This directory has no directories !");
          return;
      }
+     int start_from = 0;
+     if(dir_name[0] != '/')
+         start_from = 1;
      // search for the directory name
-     int i;
-     for(i = 0; i <= d->child_index; ++i){
-        if(strcmp(dir_name , d->child[i]->dir_name) == 0){
+     int i = 0;
+     for(; i <= d->child_index; ++i){
+        if(strcmp(dir_name , d->child[i]->dir_name+start_from) == 0){
              //deallocing that dir branch tree;
              delete_dir_tree(d->child[i]);
              break;
@@ -315,10 +382,10 @@ void view_contents(struct FS *fs){
             printf("\nThe directory is empty \n \n");
             return;
       }
-      printf("\nInside /%s directory\n\n", fs->current_dir->dir_name);
+      printf("\nInside %s directory\n\n", fs->current_dir->dir_name);
      //first showing all the directories in current directory;
      for(int i = 0; i <= fs->current_dir->child_index; ++i){
-          printf("/%s                   DIR\n\n",fs->current_dir->child[i]->dir_name);
+          printf("%s                   DIR\n\n",fs->current_dir->child[i]->dir_name);
      }
      //first showing all the files in current directory;
      for(int i = 0; i <= fs->current_dir->file_index; ++i){

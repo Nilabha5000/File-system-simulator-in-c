@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -g
 TARGET = fs
 
 # Source files
-SRC = FS.c main.c stack.c queue.c map.c
+SRC = FS.c main.c stack.c queue.c map.c hst_mng.c
 
 # Object files
 OBJ = $(SRC:.c=.o)

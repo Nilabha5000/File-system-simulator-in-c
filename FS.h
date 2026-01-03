@@ -34,6 +34,7 @@ struct dir *make_directory(char *);
 void make_directory_in_a_current_directory(struct FS* , char *);
 void create_file(struct FS * , const char *);
 void write_file(struct FS * , const char *, const char *);
+void edit_file(struct FS * , const char *);
 void show_file_content(struct FS *, const char *);
 void remove_file(struct FS * , const char *);
 struct dir *change_directory(struct FS*,char *);
