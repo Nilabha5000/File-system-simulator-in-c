@@ -7,7 +7,6 @@
 #include "obj_map.h"
 
 // Define maximum number of files and directories in a directory
-#define MAX_CONTAIN 100
 #define MAX_CONTENT_LEN 4007
 struct stack;
 
@@ -16,8 +15,7 @@ struct file{
     char content_buffer[MAX_CONTENT_LEN];
 };
 struct dir{
-     struct file *files[MAX_CONTAIN];
-     int file_index;
+     struct obj_table *files;
      char *dir_name;
      struct obj_table *child;
 };
