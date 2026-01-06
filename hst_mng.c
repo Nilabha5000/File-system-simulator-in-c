@@ -1,5 +1,6 @@
 #include "hst_mng.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 // This function initializes the history manager
 // It creates a new mng_history structure

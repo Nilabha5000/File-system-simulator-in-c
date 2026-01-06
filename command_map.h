@@ -1,5 +1,5 @@
-#ifndef MAP_H
-#define MAP_H
+#ifndef COMMAND_MAP_H
+#define COMMAND_MAP_H
 #include <stdlib.h>
 #define MAXLEN 100
 

@@ -1,5 +1,5 @@
 #include "FS.h"
-#include "map.h"
+#include "command_map.h"
 #include "hst_mng.h"
 #include <unistd.h>
 #include <string.h>
@@ -214,6 +214,10 @@ int main(void) {
     // and to parse it into tokens
     char command[200] = {0};
     struct FS *fs = initFS("root");    
+    if(fs == NULL){
+        perror("root initialization failed");
+        return 1;
+    }
     path p;
     p.count = 1;
     p.vector[0] = fs->root->dir_name;

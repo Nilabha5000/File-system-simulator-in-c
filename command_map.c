@@ -1,4 +1,4 @@
-#include "map.h"
+#include "command_map.h"
 #include <string.h>
 
 struct nlist **init(){

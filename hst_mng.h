@@ -1,5 +1,5 @@
 #ifndef HST_MNG_H
-
+#define HST_MNG_H
 
 // This is a history node structure
 // It holds a command and a pointer to the next node

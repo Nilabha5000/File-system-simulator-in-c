@@ -6,7 +6,9 @@
 
 struct FS *initFS(char *root_name){
      struct FS *fs = (struct FS*)malloc(sizeof(struct FS));
+     if(fs == NULL) return NULL;
      fs->root = make_directory(root_name);
+     if(fs->root == NULL) return NULL;
      fs->current_dir = fs->root;
      fs->s = init_stack();
      push(&fs->s , fs->current_dir);
@@ -16,7 +18,10 @@ struct dir *make_directory(char *dir_name){
     struct dir *d = (struct dir*)malloc(sizeof(struct dir));
     if(d == NULL) return NULL;
     d->dir_name = (char*)malloc(strlen(dir_name)+2);
-    if(d->dir_name == NULL) return NULL;
+    if(d->dir_name == NULL){
+        free(d);
+        return NULL;
+    }
     int start_from = 0;
     if(dir_name[0] != '/'){
         d->dir_name[0] = '/';
@@ -24,16 +29,17 @@ struct dir *make_directory(char *dir_name){
         start_from = 1;
     }
     strcpy(d->dir_name+start_from , dir_name);
-    // initailizing all child as NULL
-    for(int i = 0; i < MAX_CONTAIN; ++i){
-        d->child[i] = NULL;
+    d->child = create_table();
+    if(d->child == NULL){
+         free(d->dir_name);
+         free(d);
+         return NULL;
     }
     // initailizing all file as NULL means no file
     for(int i = 0; i < MAX_CONTAIN; ++i)
          d->files[i] = NULL;
      //intailizing the file and index with -1;
      d->file_index = -1;
-     d->child_index = -1;
     return d;
 }
 
@@ -241,21 +247,22 @@ struct dir *change_directory(struct FS *fs ,char * dir_name){
           perror("Invalid directory name");
           return NULL;
      }
-     int start_from = 0;
-     if(dir_name[0] != '/')
-         start_from = 1;
+     char slashed_dir_name[50] = {0};
+     if(dir_name[0] != '/'){
+         slashed_dir_name[0] = '/';
+         strcpy(slashed_dir_name+1,dir_name);
+     }
+     else
+       strcpy(slashed_dir_name,dir_name);
         // Search for the directory in the current directory's children
-         for (int i = 0; i <= fs->current_dir->child_index; i++)
-         {
-            if (strcmp(fs->current_dir->child[i]->dir_name+start_from, dir_name) == 0)
-            {
-                // Directory found, push current directory onto stack
-                push(&fs->s, fs->current_dir->child[i]);
-                return fs->current_dir->child[i];
-            }
-         }
-         perror("Directory not found");
-         return NULL;
+        struct dir *changed_dir = (struct dir*)get_obj(fs->current_dir->child,slashed_dir_name);
+        if(changed_dir == NULL){
+               perror("Directory not found");
+               return NULL;
+        }
+         push(&fs->s, changed_dir);
+         return changed_dir;
+        
 }
 // Function that returns the previous directory
 struct dir *go_back_to_prev(struct FS *fs){
@@ -266,61 +273,72 @@ struct dir *go_back_to_prev(struct FS *fs){
       return NULL;
 }
 void make_directory_in_a_current_directory(struct FS *fs , char *dir_name){
-        if(fs == NULL){
+     if(fs == NULL){
            perror("file system not created");
            return;
-        }
-        //check if the current directory is NULL
-        if(fs->current_dir == NULL){
-             perror("Current directory does not exist");
-             return;
-        }
-        // Check if the directory name is valid
-        if(dir_name == NULL || strlen(dir_name) == 0){
-                perror("Invalid directory name");
-                return;
-        }
-       //check for if current directory has a directory of dir_name.
-       for(int i = 0; i <= fs->current_dir->child_index; ++i){
-             if(strcmp(dir_name, fs->current_dir->child[i]->dir_name) == 0){
-                  perror("directory already exists");
-                  return;
-             }
-       }
-      int index = ++fs->current_dir->child_index;
-      if(index >= MAX_CONTAIN){
-          perror("directory max limit reached");
-          --fs->current_dir->child_index;
+     }
+     //check if the current directory is NULL
+     if(fs->current_dir == NULL){
+          perror("Current directory does not exist");
           return;
-      }
-      fs->current_dir->child[index] = make_directory(dir_name);
+     }
+     // Check if the directory name is valid
+     if(dir_name == NULL || strlen(dir_name) == 0){
+          perror("Invalid directory name");
+          return;
+     }
+        
+     char slashed_dir_name[256] = {0};
+     memset(slashed_dir_name,0,256);
+     if(dir_name[0] != '/'){
+         slashed_dir_name[0] = '/';
+         strncpy(slashed_dir_name+1,dir_name,255);
+     }
+     else{
+       strncpy(slashed_dir_name,dir_name,256);
+     }
+       
+     //check for if current directory has a directory of dir_name.
+     if(get_obj(fs->current_dir->child,slashed_dir_name)){
+          perror("directory already exists");
+          return;
+     }
 
-      if(fs->current_dir->child[index] == NULL){
-          perror("directory cration failed");
-          --fs->current_dir->child_index;
+     struct dir *new_dir = make_directory(slashed_dir_name);
+     if(fs->current_dir->child == NULL || new_dir == NULL){
+          perror("directory creation failed");
           return;
-      }
+     }
+     insert_obj(fs->current_dir->child,slashed_dir_name,new_dir);
+      
 }
 void delete_dir_tree(struct dir *root){
        if(root == NULL){
            perror("its NULL");
            return;
        }
-       
+       if(root->child == NULL) return;
        struct queue *q = q_init();
        q_push(q,root);
        while(!q_empty(q)){
-            struct dir *temp = q_front(q);
-            q_pop(q);
-            for(int i = 0; i <= temp->child_index; ++i){
-                q_push(q,temp->child[i]);
-            }
-            
+          struct dir *temp = q_front(q);
+          q_pop(q);
+          if(temp->child){
+               for(int i = 0; i < temp->child->size; ++i){
+                  struct bucket *curr = temp->child->table[i];
+                  while(curr){
+                      q_push(q,(struct dir*)curr->value);
+                      curr = curr->next;
+                  }
+               }
+          }
+          
             free(temp->dir_name);
             for(int i = 0; i <= temp->file_index; ++i){
                   free(temp->files[i]->file_name);
                   free(temp->files[i]);
             }
+            destroy_obj_table(temp->child);
             free(temp);
        }
        
@@ -339,34 +357,26 @@ void delete_dir(struct dir *d , char *dir_name){
         return;
      }
      //check for if the directory has no directories
-     if(d->child_index == -1){
+     if(d->child == NULL || d->child->count == 0){
          perror("This directory has no directories !");
          return;
      }
-     int start_from = 0;
-     if(dir_name[0] != '/')
-         start_from = 1;
+     char slashed_dir_name[50] = {0};
+     if(dir_name[0] != '/'){
+         slashed_dir_name[0] = '/';
+         strcpy(slashed_dir_name+1,dir_name);
+     }
+     else
+         strcpy(slashed_dir_name,dir_name);
      // search for the directory name
-     int i = 0;
-     for(; i <= d->child_index; ++i){
-        if(strcmp(dir_name , d->child[i]->dir_name+start_from) == 0){
-             //deallocing that dir branch tree;
-             delete_dir_tree(d->child[i]);
-             break;
-        }
+
+     struct dir *recieved_dir = (struct dir*)get_obj(d->child,slashed_dir_name);
+     if(recieved_dir == NULL){
+           perror("this directory does not exist !");
+           return;
      }
-     //check if the directory not found
-     if(i > d->child_index){
-         perror("this directory does not exist !");
-         return;
-     }
-     //check if i is less than child_index the shift the contents of child[I+1] to child[i]
-     if(i < d->child_index){
-         for(int I = i; I < d->child_index; ++I){
-             d->child[I] = d->child[I+1];
-         }
-     }
-     d->child_index--;
+     delete_dir_tree(recieved_dir);
+     del_obj(d->child,slashed_dir_name);
 }
 void view_contents(struct FS *fs){
       if(fs == NULL){
@@ -378,14 +388,20 @@ void view_contents(struct FS *fs){
            perror("current dir is NULL");
            return;
       }
-      if(fs->current_dir->file_index == -1 && fs->current_dir->child_index == -1){
+      if(fs->current_dir->file_index == -1 && (fs->current_dir->child == NULL || fs->current_dir->child->count == 0)){
             printf("\nThe directory is empty \n \n");
             return;
       }
       printf("\nInside %s directory\n\n", fs->current_dir->dir_name);
      //first showing all the directories in current directory;
-     for(int i = 0; i <= fs->current_dir->child_index; ++i){
-          printf("%s                   DIR\n\n",fs->current_dir->child[i]->dir_name);
+     for(int i = 0; i < fs->current_dir->child->size; ++i){
+          struct bucket *node = fs->current_dir->child->table[i];
+          while(node){
+               struct dir *d = (struct dir*)node->value;
+               printf("%s                   DIR\n\n",d->dir_name);
+               node = node->next;
+          }
+         
      }
      //first showing all the files in current directory;
      for(int i = 0; i <= fs->current_dir->file_index; ++i){
