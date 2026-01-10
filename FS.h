@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include "stack.h"
 #include "obj_map.h"
-
+#include "path.h"
 // Define maximum number of files and directories in a directory
 #define MAX_CONTENT_LEN 4007
 struct stack;
@@ -23,6 +23,7 @@ struct dir{
 struct FS{
     struct dir *root;
     struct dir *current_dir;
+    struct path *current_path;
     struct stack *s;
 
 };

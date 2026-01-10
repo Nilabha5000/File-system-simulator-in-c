@@ -19,14 +19,8 @@ typedef struct cmd{
 // and the directories that have been visited
 // It is used to print the current path in the shell
 // when the user enters a command
-typedef struct path{
-    int count;
-    char *vector[100];
-}path;
-
 struct essentail_items{
     struct FS *fs;
-    path *p;
     cmd *c;
     mng_history *history;
 };
@@ -164,8 +158,6 @@ void wrap_go_back(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
     if(ei->fs->current_dir != ei->fs->root)
         ei->fs->current_dir = go_back_to_prev(ei->fs);
-    if(ei->p->count > 1)
-        ei->p->count--;
 }
 void wrap_vim(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
@@ -189,8 +181,8 @@ void wrap_python(void *){
 }
 void wrap_pwd(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
-     for(int i = 0; i < ei->p->count; ++i){
-        printf("%s",ei->p->vector[i]);
+     for(struct path_node *i = ei->fs->current_path->begin; i != NULL; i = i->next){
+        printf("%s",i->name);
     }
     printf("\n");
 }
@@ -198,13 +190,9 @@ void wrap_pwd(void *arg){
 void wrap_cd(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
     ei->fs->current_dir = change_directory(ei->fs , ei->c->argv[1]);
-    if(ei->fs->current_dir != NULL){
-        ei->p->vector[ei->p->count] = ei->fs->current_dir->dir_name;
-        ei->p->count++;
-    }
-    else{
-        ei->fs->current_dir = peek(&ei->fs->s);
-    }
+    if(ei->fs->current_dir == NULL)
+         ei->fs->current_dir = peek(&ei->fs->s);
+    
 }
 int main(void) {
     int running = 0;
@@ -218,9 +206,6 @@ int main(void) {
         perror("root initialization failed");
         return 1;
     }
-    path p;
-    p.count = 1;
-    p.vector[0] = fs->root->dir_name;
     cmd c;
     mng_history *history = init_history();
     nlist **map = init();
@@ -244,14 +229,13 @@ int main(void) {
     ei.c = &c;
     ei.fs = fs;
     ei.history = history;
-    ei.p = &p;
     while (!running) {
         memset(command , 0 , 200);
       // This is the prompt that shows the current path
        printf("\033[1;32m"); // Set text color to green
        printf("~");
-       for(int i = 0; i < p.count; ++i){
-        printf("%s",p.vector[i]);
+       for(struct path_node *i = fs->current_path->begin; i != NULL; i= i->next){
+        printf("%s",i->name);
        }
        printf("$ ");
        fgets(command,200,stdin);

@@ -11,6 +11,8 @@ struct FS *initFS(char *root_name){
      if(fs->root == NULL) return NULL;
      fs->current_dir = fs->root;
      fs->s = init_stack();
+     fs->current_path = create_path();
+     path_push(fs->current_path,fs->root->dir_name);
      push(&fs->s , fs->current_dir);
      return fs;
 }
@@ -229,6 +231,7 @@ struct dir *change_directory(struct FS *fs ,char * dir_name){
                perror("Directory not found");
                return NULL;
         }
+         path_push(fs->current_path,slashed_dir_name);
          push(&fs->s, changed_dir);
          return changed_dir;
         
@@ -237,6 +240,7 @@ struct dir *change_directory(struct FS *fs ,char * dir_name){
 struct dir *go_back_to_prev(struct FS *fs){
         if(!is_empty(&fs->s)){
            pop(&fs->s);
+           path_pop(fs->current_path);
           return peek(&fs->s);
         }
       return NULL;
@@ -400,6 +404,7 @@ void destroy_FS(struct FS *fs){
     delete_dir_tree(fs->root);
     
     destroy_stack(fs->s);
+    path_destroy(fs->current_path);
     free(fs);
     printf("\ndone\n");
 
