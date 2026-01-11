@@ -189,9 +189,7 @@ void wrap_pwd(void *arg){
 
 void wrap_cd(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
-    ei->fs->current_dir = change_directory(ei->fs , ei->c->argv[1]);
-    if(ei->fs->current_dir == NULL)
-         ei->fs->current_dir = peek(&ei->fs->s);
+    change_directory(ei->fs , ei->c->argv[1]);
     
 }
 int main(void) {

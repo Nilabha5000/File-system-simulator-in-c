@@ -16,5 +16,6 @@ struct path *create_path();
 int is_path_empty(struct path *);
 void path_push(struct path *, const char *name);
 void path_pop(struct path *);
+struct path *get_path(const char *);
 void path_destroy(struct path *);
 #endif

@@ -77,3 +77,65 @@ void path_pop(struct path *p){
     p->end->next = NULL;
 
 }
+
+struct path *get_path(const char *pth){
+
+    struct path *p = create_path();
+
+    if(p == NULL) return NULL;
+    int size = 20;
+    char *token = (char*)malloc(size);
+    if(token == NULL){
+        free(p);
+        return NULL;
+    }
+
+    int n = strlen(pth);
+    int i = 0, index = 0;
+    if(pth[0] == '/')
+    {
+        token[index] = '/';
+        index++;
+        i++;
+    }
+
+    for(; i < n; ++i){
+        if(pth[i] != '/'){
+            if(index >= size){
+                size *= 2;
+                char *temp = realloc(token, size);
+                if(temp == NULL){
+                    free(token);
+                    path_destroy(p);
+                    return NULL;
+                }
+                token = temp;
+            }
+            token[index++] = pth[i];
+        }
+        else if(i != n-1 && pth[i] == '/'){
+            token[index] = '\0';
+            if(strlen(token) != 0)
+                 path_push(p, token);
+            free(token);
+            size = 20;
+            index = 0;
+
+            token = (char*)malloc(size);
+
+            if(token == NULL)
+            {
+                path_destroy(p);
+                return NULL;
+            }
+
+            token[index++] = '/';
+        }
+    }
+
+    token[index] = '\0';
+
+    path_push(p,token);
+    free(token);
+    return p;
+}
