@@ -110,21 +110,24 @@ void create_file(struct FS *fs , const char *file_path){
       
       newfile->file_name = (char*)malloc(strlen(filename)+1);
       // Copy the file name into the directory's files array
-      strcpy(newfile->file_name, filename);
+      strcpy(newfile->file_name, filename+start_from);
       //setting the content buffer with 0.
       memset(newfile->content_buffer , 0 , MAX_CONTENT_LEN);
      //check if the file insertion failed then free the memory of file and filename
-     if(!insert_obj(dest_dir->files,filename+1, newfile)){
+     if(!insert_obj(dest_dir->files,filename + start_from, newfile)){
           free(newfile->file_name);
           free(newfile);
+          free(filename);
+          path_destroy(p);
           perror("file creation failed");
+          return;
      }
 
      free(filename);
      path_destroy(p);
 }
 
-void remove_file(struct FS *fs , const char *filename){
+void remove_file(struct FS *fs , const char *file_path){
      if(fs == NULL){
           perror("file system not created");
            return;
@@ -135,10 +138,39 @@ void remove_file(struct FS *fs , const char *filename){
            perror("directory does not exist");
            return;
      }
-     
+      char *slash_file_path = (char*)malloc(strlen(file_path)+2);
+      if(file_path[0] != '/'){
+          slash_file_path[0] = '/';
+          strcpy(slash_file_path+1,file_path);
+      }
+      else{
+          strcpy(slash_file_path,file_path);
+      }
+      slash_file_path[strlen(slash_file_path)] = '\0';
+      struct path *p = get_path(slash_file_path);
+      free(slash_file_path);
+      if(p == NULL){
+          perror("file cannot be crated because of path failure ");
+          return;
+      }
+      //this is reash destination dir where to create file
+      struct dir *dest_dir = fs->current_dir;
+      for(struct path_node *i = p->begin; i != p->end; i = i->next){
+          dest_dir = (struct dir*)get_obj(dest_dir->child,i->name);
+          if(dest_dir == NULL){
+               perror("directory not found");
+               path_destroy(p);
+               return;
+          }
+      }
+
+     char *filename = strdup(p->end->name);
+     int start_from = 0;
+     if(filename[0] == '/')
+       start_from = 1;
      //search for a filename 
-     struct file *getfile = (struct file*)del_obj(fs->current_dir->files,filename);
-     
+     struct file *getfile = (struct file*)del_obj(dest_dir->files,filename + start_from);
+     free(filename);
      if(getfile == NULL){
           perror("file not found");
      }
@@ -148,7 +180,7 @@ void remove_file(struct FS *fs , const char *filename){
      }
 }
 
-void write_file(struct FS *fs , const char *content , const char *filename){
+void write_file(struct FS *fs , const char *content , const char *file_path){
      if(fs == NULL){
           perror("file system not created");
           return;
@@ -160,10 +192,39 @@ void write_file(struct FS *fs , const char *content , const char *filename){
            perror("directory does not exist");
            return;
      }
+     char *slash_file_path = (char*)malloc(strlen(file_path)+2);
+      if(file_path[0] != '/'){
+          slash_file_path[0] = '/';
+          strcpy(slash_file_path+1,file_path);
+      }
+      else{
+          strcpy(slash_file_path,file_path);
+      }
+      slash_file_path[strlen(slash_file_path)] = '\0';
+      struct path *p = get_path(slash_file_path);
+      free(slash_file_path);
+      if(p == NULL){
+          perror("file cannot be crated because of path failure ");
+          return;
+      }
+      //this is reash destination dir where to create file
+      struct dir *dest_dir = fs->current_dir;
+      for(struct path_node *i = p->begin; i != p->end; i = i->next){
+          dest_dir = (struct dir*)get_obj(dest_dir->child,i->name);
+          if(dest_dir == NULL){
+               perror("directory not found");
+               path_destroy(p);
+               return;
+          }
+      }
 
+     char *filename = strdup(p->end->name);
+     int start_from = 0;
+     if(filename[0] == '/')
+       start_from = 1;
      //search for file with a given filename in the current directory.
-     struct file *getfile = (struct file*)get_obj(fs->current_dir->files,filename);
-   
+     struct file *getfile = (struct file*)get_obj(dest_dir->files,filename + start_from);
+     free(filename);
 
      if(getfile == NULL){
           perror("file of this name does not exist in current directory");
@@ -172,15 +233,42 @@ void write_file(struct FS *fs , const char *content , const char *filename){
 
      strncpy(getfile->content_buffer,content,MAX_CONTENT_LEN);
 }
-void edit_file(struct FS *fs , const char *filename){
+void edit_file(struct FS *fs , const char *file_path){
      if(fs == NULL){
           perror("file system not created");
           return;
      }
-
-     struct file *getfile = (struct file*)get_obj(fs->current_dir->files,filename);
-    
-
+      char *slash_file_path = (char*)malloc(strlen(file_path)+2);
+      if(file_path[0] != '/'){
+          slash_file_path[0] = '/';
+          strcpy(slash_file_path+1,file_path);
+      }
+      else{
+          strcpy(slash_file_path,file_path);
+      }
+      slash_file_path[strlen(slash_file_path)] = '\0';
+      struct path *p = get_path(slash_file_path);
+      free(slash_file_path);
+      if(p == NULL){
+          perror("file cannot be crated because of path failure ");
+          return;
+      }
+      //this is reash destination dir where to create file
+      struct dir *dest_dir = fs->current_dir;
+      for(struct path_node *i = p->begin; i != p->end; i = i->next){
+          dest_dir = (struct dir*)get_obj(dest_dir->child,i->name);
+          if(dest_dir == NULL){
+               perror("directory not found");
+               path_destroy(p);
+               return;
+          }
+      }
+      char *filename = strdup(p->end->name);
+      int start_from = 0;
+     if(filename[0] == '/')
+       start_from = 1;
+     struct file *getfile = (struct file*)get_obj(dest_dir->files,filename + start_from);
+     free(filename);
      if(getfile == NULL){
           perror("file of this name does not exist in current directory");
           return;
@@ -195,13 +283,9 @@ void edit_file(struct FS *fs , const char *filename){
      }
      fprintf(temp_filew,"%s", getfile->content_buffer);
      fclose(temp_filew);
-     char cmd[100] = {0};
-     memset(cmd,0,100);
-     strcpy(cmd,"vim ");
-     strcat(cmd,"temp.txt");
      
      //opening the vim editor.
-     system(cmd);
+     system("vim temp.txt");
 
      //saving contents to a file.
      char ch = '\0';
@@ -215,7 +299,7 @@ void edit_file(struct FS *fs , const char *filename){
 
      remove("temp.txt");
 }
-void show_file_content(struct FS *fs , const char *filename){
+void show_file_content(struct FS *fs , const char *file_path){
      if(fs == NULL){
           perror("file system not created");
           return;
@@ -227,9 +311,39 @@ void show_file_content(struct FS *fs , const char *filename){
            perror("directory does not exist");
            return;
      }
-     //search for file with a given filename in the current directory.
-     struct file *getfile = (struct file*)get_obj(fs->current_dir->files,filename);
 
+     //search for file with a given filename in the current directory.
+      char *slash_file_path = (char*)malloc(strlen(file_path)+2);
+      if(file_path[0] != '/'){
+          slash_file_path[0] = '/';
+          strcpy(slash_file_path+1,file_path);
+      }
+      else{
+          strcpy(slash_file_path,file_path);
+      }
+      slash_file_path[strlen(slash_file_path)] = '\0';
+      struct path *p = get_path(slash_file_path);
+      free(slash_file_path);
+      if(p == NULL){
+          perror("file cannot be crated because of path failure ");
+          return;
+      }
+      //this is reash destination dir where to create file
+      struct dir *dest_dir = fs->current_dir;
+      for(struct path_node *i = p->begin; i != p->end; i = i->next){
+          dest_dir = (struct dir*)get_obj(dest_dir->child,i->name);
+          if(dest_dir == NULL){
+               perror("directory not found");
+               path_destroy(p);
+               return;
+          }
+      }
+      char *filename = strdup(p->end->name);
+      int start_from = 0;
+     if(filename[0] == '/')
+       start_from = 1;
+     struct file *getfile = (struct file*)get_obj(dest_dir->files,filename + start_from);
+     free(filename);
      if(getfile == NULL){
           perror("file of this name does not exist in current directory");
           return;
@@ -254,7 +368,7 @@ struct dir *change_directory(struct FS *fs ,char * dir_path){
           perror("Invalid directory name");
           return NULL;
      }
-     char slashed_dir_path[1007] = {0};
+     char *slashed_dir_path = (char*)malloc(strlen(dir_path) + 2);
      if(dir_path[0] != '/'){
          slashed_dir_path[0] = '/';
          strcpy(slashed_dir_path+1,dir_path);
@@ -262,6 +376,7 @@ struct dir *change_directory(struct FS *fs ,char * dir_path){
      else {strcpy(slashed_dir_path,dir_path);}
 
        struct path *p = get_path(slashed_dir_path);
+       free(slashed_dir_path);
        if(p == NULL)
          return NULL;
         // Search for the directory in the current directory's children
@@ -307,7 +422,7 @@ struct dir *go_back_to_prev(struct FS *fs){
         }
       return NULL;
 }
-void make_directory_in_a_current_directory(struct FS *fs , char *dir_name){
+void make_directory_in_a_directory(struct FS *fs , const char *dir_path){
      if(fs == NULL){
            perror("file system not created");
            return;
@@ -318,34 +433,50 @@ void make_directory_in_a_current_directory(struct FS *fs , char *dir_name){
           return;
      }
      // Check if the directory name is valid
-     if(dir_name == NULL || strlen(dir_name) == 0){
+     if(dir_path == NULL || strlen(dir_path) == 0){
           perror("Invalid directory name");
           return;
      }
         
-     char slashed_dir_name[256] = {0};
-     memset(slashed_dir_name,0,256);
-     if(dir_name[0] != '/'){
-         slashed_dir_name[0] = '/';
-         strncpy(slashed_dir_name+1,dir_name,255);
+     char *slashed_dir_path = (char*)malloc(strlen(dir_path)+2);
+     if(dir_path[0] != '/'){
+         slashed_dir_path[0] = '/';
+         strcpy(slashed_dir_path+1,dir_path);
      }
-     else{
-       strncpy(slashed_dir_name,dir_name,256);
-     }
-       
-     //check for if current directory has a directory of dir_name.
-     if(get_obj(fs->current_dir->child,slashed_dir_name)){
-          perror("directory already exists");
+     else{strcpy(slashed_dir_path,dir_path);}
+     
+     struct path *p = get_path(slashed_dir_path);
+     free(slashed_dir_path);
+     if(p == NULL){
           return;
      }
 
-     struct dir *new_dir = make_directory(slashed_dir_name);
-     if(fs->current_dir->child == NULL || new_dir == NULL){
-          perror("directory creation failed");
+     char *dir_name = p->end->name;
+
+     struct dir *dest_dir = fs->current_dir;
+     for(struct path_node *i = p->begin; i != p->end; i = i->next){
+          dest_dir = (struct dir*)get_obj(dest_dir->child,i->name);
+          if(dest_dir == NULL){
+               perror("directory not found");
+               path_destroy(p);
+               return;
+          }
+      }
+     //check for if current directory has a directory of dir_name.
+     if(get_obj(dest_dir->child,dir_name)){
+          perror("directory already exists");
+          path_destroy(p);
           return;
      }
-     insert_obj(fs->current_dir->child,slashed_dir_name,new_dir);
-      
+
+     struct dir *new_dir = make_directory(dir_name);
+     if(dest_dir->child == NULL || new_dir == NULL){
+          perror("directory creation failed");
+          path_destroy(p);
+          return;
+     }
+     insert_obj(dest_dir->child,dir_name,new_dir);
+     path_destroy(p);
 }
 void delete_dir_tree(struct dir *root){
        if(root == NULL){

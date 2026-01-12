@@ -149,7 +149,7 @@ void wrap_mkdir(void * arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
 
     if(ei->c->argc > 1)
-        make_directory_in_a_current_directory(ei->fs , ei->c->argv[1]);
+        make_directory_in_a_directory(ei->fs , ei->c->argv[1]);
     else
         printf("mkdir needs more the one argument\n");
 }

@@ -30,7 +30,7 @@ struct FS{
 
 struct FS *initFS(char *);
 struct dir *make_directory(char *);
-void make_directory_in_a_current_directory(struct FS* , char *);
+void make_directory_in_a_directory(struct FS* , const char *);
 void create_file(struct FS * , const char *);
 void write_file(struct FS * , const char *, const char *);
 void edit_file(struct FS * , const char *);
