@@ -1,8 +1,8 @@
-# In-Memory File System (FSS)
+# In-Memory File System (FSS) CLI version.
 
 ## Overview
 
-**FSS (File System Simulator)** is a Unix-like, in-memory file system written in **C**, designed to deeply understand how real file systems work internally. Instead of relying on the host OS, FSS maintains its own directory tree, file objects, and path resolution logic entirely in user space.
+**FSS File System Simulator (CLI version)** is a Unix-like, in-memory file system written in **C**, designed to deeply understand how real file systems work internally. Instead of relying on the host OS, FSS maintains its own directory tree, file objects, and path resolution logic entirely in user space.
 
 This project focuses on **systems-level concepts** such as:
 - Path resolution (`/a/b/c`, quoted paths, nested traversal)
@@ -35,7 +35,7 @@ The goal is not just functionality, but **learning and demonstrating low-level d
 ### ✅ File Management
 - Create files using full paths
 - Detect duplicate files
-- Store file metadata and content in memory
+- Store file content in memory
 
 ### ✅ Separation of Responsibilities
 - **Shell (`main.c`)**: command parsing, quotes handling, user interaction
@@ -89,22 +89,13 @@ This project is intentionally built "from scratch" without external libraries to
 - Save file system state to disk
 - Reload directory tree on startup
 - Consistent on-disk format (binary or JSON snapshot)
-
-### 🔜 Backend Integration
-- Expose FS operations using **FastAPI (Python)**
-- REST APIs for file and directory operations
-
-### 🔜 Frontend
-- **Vue.js** UI to visualize directory tree
-- File creation, navigation, and editing from browser
+- copying files and folders form one directory to another.
 
 ---
 
 ## Technologies Used
 
 - **C** (core filesystem and data structures)
-- **Python (FastAPI)** – planned backend layer
-- **Vue.js** – planned frontend
 
 ---
 

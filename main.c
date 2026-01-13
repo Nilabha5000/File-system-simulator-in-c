@@ -113,7 +113,7 @@ void wrap_view_contents(void *arg){
 
 void wrap_delete_dir(void *arg){
     struct essentail_items *ei = (struct essentail_items *)arg;
-    delete_dir(ei->fs->current_dir,ei->c->argv[1]);
+    delete_dir(ei->fs,ei->c->argv[1]);
 }
 
 void wrap_create_file(void *arg){
