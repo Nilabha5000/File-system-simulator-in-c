@@ -23,28 +23,65 @@ struct bucket *create_bucket(const char *key , void *value){
     buk->next = NULL;
     return buk;
 }
-struct bucket **rehash(struct obj_table *obj , int new_size){
+void destroy_bucket(struct bucket *buk){
+    free(buk->key);
+    free(buk);
+}
+struct bucket_list *create_bucket_list(){
+    struct bucket_list *buck_list = (struct bucket_list*)malloc(sizeof(struct bucket_list));
+    if(buck_list == NULL){
+       return NULL;
+    }
+    buck_list->next = NULL;
+    buck_list->start = NULL;
+    buck_list->prev = NULL;
+    
+    return buck_list;
+}
+struct bucket_list **rehash(struct obj_table *obj , int new_size){
     if(obj == NULL) return NULL;
-    struct bucket **new_table = (struct bucket**)calloc(new_size, sizeof(struct bucket*));
+    struct bucket_list **new_table = (struct bucket_list**)calloc(new_size, sizeof(struct bucket_list*));
 
     if(new_table == NULL) return NULL;
-    struct bucket **old_table = obj->table;
-    int old_size = obj->size;
+    struct bucket_list **old_table = obj->table;
     int new_count = 0;
-    for(int i = 0; i < old_size; ++i){
+    struct bucket_list *new_begin = NULL;
+    struct bucket_list *new_end = NULL;
+    struct bucket_list *head = obj->begin;
+    while(head != NULL){
         
-        struct bucket *node = old_table[i];
+        struct bucket *node = head->start;
         while(node){
             struct bucket *next = node->next;
             unsigned long h = djb2(node->key);
             int index = (int)(h % (unsigned long)new_size);
-           
-            node->next = new_table[index];
-            new_table[index] = node;
+            if(new_table[index] == NULL){
+                new_table[index] = create_bucket_list();
+                if(new_begin == NULL){
+                    new_begin = new_end = new_table[index];
+                }
+                else{
+                   new_end->next = new_table[index];
+                   new_table[index]->prev = new_end;
+                   new_end = new_table[index];
+                }
+            }
+        
+            node->next = new_table[index]->start;
+            new_table[index]->start = node;
             new_count++;
-
+            
             node = next;
 
+        }
+
+        if(head->next == NULL){
+            free(head);
+            head = NULL;
+        }
+        else{
+            head = head->next;
+            free(head->prev);
         }
         
     }
@@ -53,6 +90,8 @@ struct bucket **rehash(struct obj_table *obj , int new_size){
     obj->size = new_size;
     obj->table = new_table;
     obj->count = new_count;
+    obj->begin = new_begin;
+    obj->end = new_end;
     return obj->table;
 }
 
@@ -62,8 +101,8 @@ struct obj_table *create_table(){
 
     obj->count = 0;
     obj->size = obj->min_cap = 5;
-    obj->table = (struct bucket**)calloc(obj->size, sizeof(struct bucket*));
-
+    obj->table = (struct bucket_list**)calloc(obj->size, sizeof(struct bucket_list*));
+    obj->begin = obj->end = NULL;
     if(obj->table == NULL){
         free(obj);
         return NULL;
@@ -71,13 +110,17 @@ struct obj_table *create_table(){
 
     return obj;
 }
-
+int empty(struct obj_table *obj){
+    
+    return (obj->begin == NULL);
+}
 void *get_obj(struct obj_table *obj, const char *key){
     if(obj == NULL) return NULL;
     unsigned long h = djb2(key);
     int index = (int)(h % (unsigned long)obj->size);
-
-    struct bucket *node = obj->table[index];
+    if(obj->table[index] == NULL)
+        return NULL;
+    struct bucket *node = obj->table[index]->start;
     while(node){
         if(strcmp(node->key,key) == 0)
             return node->value;
@@ -92,15 +135,25 @@ void destroy_obj_table(struct obj_table *obj){
         free(obj);
         return;
     }
-
-    for(int i = 0; i < obj->size; ++i){
-        struct bucket *node = obj->table[i];
+    
+    struct bucket_list *head = obj->begin;
+    while(head != NULL){
+        struct bucket *node = head->start;
       
         while(node != NULL){
             struct bucket *next = node->next;
-            free(node->key);
-            free(node);
+            destroy_bucket(node);
             node = next;
+        }
+        
+        if(head->next == NULL)
+        {
+            free(head);
+            head = NULL;
+        }
+        else{
+            head = head->next;
+            free(head->prev);
         }
     }
     free(obj->table);
@@ -124,13 +177,28 @@ int insert_obj(struct obj_table *obj , const char *key, void *value){
     unsigned long h = djb2(buk->key);
     int index = (int)(h % (unsigned long)obj->size);
     if(obj->table[index] == NULL){
-        obj->table[index] = buk;
+        struct bucket_list* buk_list = create_bucket_list();
+        if(buk_list == NULL){
+            destroy_bucket(buk);
+            return 0;
+        }
+        if(empty(obj)){
+             obj->begin = obj->end = buk_list;
+        } 
+        else{
+            obj->end->next = buk_list;
+            buk_list->prev = obj->end;
+            obj->end = buk_list;
+        }
+        buk_list->start = buk;
+        obj->table[index] = buk_list;
+
         obj->count++;
         return 1;
     }
-
-    buk->next = obj->table[index];
-    obj->table[index] = buk;
+    
+    buk->next = obj->table[index]->start;
+    obj->table[index]->start = buk;
     obj->count++; 
     return 1;
 }
@@ -139,8 +207,10 @@ void* del_obj(struct obj_table *obj, const char *key){
 
     unsigned long h = djb2(key);
     int index = (int)(h % (unsigned long)obj->size);
-
-    struct bucket *curr = obj->table[index];
+    if(obj->table[index] == NULL){
+         return NULL;
+    }
+    struct bucket *curr = obj->table[index]->start;
     struct bucket *prev = NULL;
 
     while(curr != NULL){
@@ -158,14 +228,34 @@ void* del_obj(struct obj_table *obj, const char *key){
 
     // unlink
     if(prev == NULL)
-        obj->table[index] = curr->next;
+        obj->table[index]->start = curr->next;
     else
         prev->next = curr->next;
 
     // free bucket
-    free(curr->key);
-    free(curr);
+    destroy_bucket(curr);
+    // check if all the buckets of the buket_list are deleted then free that bucket_list.
+    if(obj->table[index]->start == NULL){
 
+        struct bucket_list *buk_list = obj->table[index];
+        //checking buck_list node is not the first node.
+        if(buk_list->prev){
+          buk_list->prev->next = buk_list->next;
+        }
+        else{
+           obj->begin = buk_list->next;
+        }
+
+       if(buk_list->next){
+          buk_list->next->prev = buk_list->prev;
+       }
+       else{
+        obj->end = buk_list->prev;
+       }
+        //freeing the bucket list.
+        free(buk_list);
+        obj->table[index] = NULL;
+    }
     obj->count--;
     // shrink if below threshold
     double load_factor = (double)obj->count / (double)obj->size;

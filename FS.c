@@ -437,8 +437,8 @@ void delete_dir_tree(struct dir *root){
           struct dir *temp = q_front(q);
           q_pop(q);
           if(temp->child){
-               for(int i = 0; i < temp->child->size; ++i){
-                  struct bucket *curr = temp->child->table[i];
+               for(struct bucket_list *i = temp->child->begin; i != NULL; i = i->next){
+                  struct bucket *curr = i->start;
                   while(curr){
                       q_push(q,(struct dir*)curr->value);
                       curr = curr->next;
@@ -448,8 +448,8 @@ void delete_dir_tree(struct dir *root){
           
             free(temp->dir_name);
             temp->dir_name = NULL;
-            for(int i = 0; i < temp->files->size; ++i){
-                  struct bucket *curr1 = temp->files->table[i];
+            for(struct bucket_list* i = temp->files->begin; i != NULL; i = i->next){
+                  struct bucket *curr1 = i->start;
                   while(curr1){
                      struct file *getfile = (struct file*)curr1->value;
                      free(getfile->file_name);
@@ -522,8 +522,8 @@ void view_contents(struct FS *fs){
       }
       printf("\nInside %s directory\n\n", fs->current_dir->dir_name);
      //first showing all the directories in current directory;
-     for(int i = 0; i < fs->current_dir->child->size; ++i){
-          struct bucket *node1 = fs->current_dir->child->table[i];
+     for(struct bucket_list* i = fs->current_dir->child->begin; i != NULL; i = i->next){
+          struct bucket *node1 = i->start;
           while(node1){
                struct dir *d = (struct dir*)node1->value;
                printf("%s                   DIR\n\n",d->dir_name);
@@ -532,8 +532,8 @@ void view_contents(struct FS *fs){
          
      }
      //first showing all the files in current directory;
-     for(int i = 0; i < fs->current_dir->files->size; ++i){
-          struct bucket *node2 = fs->current_dir->files->table[i];
+     for(struct bucket_list* i = fs->current_dir->files->begin; i != NULL; i = i->next){
+          struct bucket *node2 = i->start;
           while(node2){
                struct file *f = (struct file*)node2->value;
                printf("%s                   FILE\n\n",f->file_name);
