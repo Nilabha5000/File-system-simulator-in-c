@@ -4,10 +4,12 @@
 #include <errno.h>
 #include <string.h>
 
-struct FS *initFS(char *root_name){
+void save_dir(struct dir *d, FILE *fp);
+
+struct FS *initFS(){
      struct FS *fs = (struct FS*)malloc(sizeof(struct FS));
      if(fs == NULL) return NULL;
-     fs->root = make_directory(root_name);
+     fs->root = make_directory("root");
      if(fs->root == NULL) return NULL;
      fs->current_dir = fs->root;
      fs->s = init_stack();
@@ -464,7 +466,6 @@ void delete_dir_tree(struct dir *root){
        }
        
        q_destroy(q);
-      printf("\n done \n");
 }
 
 void delete_dir(struct FS *fs , char *dir_path){
@@ -555,4 +556,106 @@ void destroy_FS(struct FS *fs){
     free(fs);
     printf("\ndone\n");
 
+}
+
+int save_fs(struct FS *fs , const char *filename){
+     FILE *fp = fopen(filename, "wb");
+     if(!fp) return 0;
+     
+     save_dir(fs->root,fp);
+     fclose(fp);
+     return 1;
+}
+void save_dir(struct dir *d , FILE *fp){
+       
+     int n = strlen(d->dir_name);
+     fwrite(&n,sizeof(n), 1 , fp);
+     fwrite(d->dir_name,1,n,fp);
+     
+     int file_count = d->files->count;
+     fwrite(&file_count,sizeof(file_count), 1 , fp);
+     for(struct bucket_list *i = d->files->begin; i != NULL; i = i->next){
+          struct bucket *b = i->start;
+          while(b != NULL){
+               struct file *f = (struct file *)b->value;
+               int file_name_len = strlen(f->file_name);
+               fwrite(&file_name_len, sizeof(file_name_len), 1 , fp);
+               fwrite(f->file_name,1,file_name_len,fp);
+
+               int content_len = strlen(f->content_buffer);
+               fwrite(&content_len,sizeof(content_len), 1 , fp);
+               fwrite(f->content_buffer, 1 , content_len, fp);
+               b = b->next;
+          }
+          
+     }
+     int dir_count = d->child->count;
+     fwrite(&dir_count,sizeof(dir_count), 1 , fp);
+      for(struct bucket_list *i = d->child->begin; i != NULL; i = i->next){
+          struct bucket *b = i->start;
+          while(b != NULL){
+               struct dir *directory = (struct dir *)b->value;
+               save_dir(directory,fp);
+               b = b->next;
+          }
+          
+     }
+
+}
+struct dir *create_fs_tree(FILE *fp){
+     int len;
+    fread(&len, sizeof(len), 1, fp);
+
+    char *name = malloc(len + 1);
+    fread(name, 1, len, fp);
+    name[len] = '\0';
+
+    struct dir *d = make_directory(name);
+    free(name);
+
+    int file_count;
+    fread(&file_count, sizeof(file_count), 1, fp);
+    //retriving all the files and its content 
+    for(int i = 0; i < file_count; i++){
+        //recreating a file of file name and file content
+        struct file *f = (struct file *)malloc(sizeof(struct file));
+        int file_name_len;
+        fread(&file_name_len,sizeof(file_name_len), 1 , fp);
+        f->file_name = (char*)malloc(file_name_len + 1);
+        memset(f->file_name , 0,file_name_len);
+        fread(f->file_name,1,file_name_len,fp);
+        f->file_name[file_name_len] = '\0';
+       // retriving the file content 
+       int content_len;
+       fread(&content_len,sizeof(content_len), 1, fp);
+       memset(f->content_buffer, 0 , MAX_CONTENT_LEN);
+       fread(f->content_buffer,1,content_len,fp);
+       f->content_buffer[content_len] = '\0';
+       //inserting the file in a hash_map.
+       insert_obj(d->files,f->file_name,f);
+
+    }
+
+    int dir_count;
+    fread(&dir_count, sizeof(dir_count), 1, fp);
+
+    for(int i = 0; i < dir_count; i++){
+        struct dir *child = create_fs_tree(fp);
+        insert_obj(d->child, child->dir_name, child);
+    }
+
+    return d;
+}
+struct FS *load_FS(const char *filename){
+    struct FS *fs = initFS();
+    FILE *fp = fopen(filename , "rb");
+    if(!fp) return fs;
+    
+    delete_dir_tree(fs->root);
+
+    fs->root = create_fs_tree(fp);
+    fs->current_dir = fs->root;
+    fclose(fp);
+
+    return fs;
 }

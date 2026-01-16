@@ -28,7 +28,7 @@ struct FS{
 
 };
 
-struct FS *initFS(char *);
+struct FS *initFS();
 struct dir *make_directory(char *);
 void make_directory_in_a_directory(struct FS* , const char *);
 void create_file(struct FS * , const char *);
@@ -43,4 +43,6 @@ void delete_dir_tree(struct dir *);
 void delete_dir(struct FS *, char *);
 void view_contents(struct FS *);
 void destroy_FS(struct FS *);
+int save_fs(struct FS * , const char *);
+struct FS *load_FS(const char *);
 #endif

@@ -199,7 +199,7 @@ int main(void) {
     // It is used to read the command from the standard input
     // and to parse it into tokens
     char command[200] = {0};
-    struct FS *fs = initFS("root");    
+    struct FS *fs = load_FS("fs.dump");
     if(fs == NULL){
         perror("root initialization failed");
         return 1;
@@ -265,7 +265,7 @@ int main(void) {
          }
         
     }
-     
+    save_fs(fs, "fs.dump");
     // Free the file system resources
     destroy_history(history);
     destroy_FS(fs);
